@@ -1,0 +1,21 @@
+services:
+  redis:
+    image: redis:7-alpine
+    container_name: rinha-redis
+    hostname: rinha-redis
+    command: redis-server --maxmemory 75mb --maxmemory-policy allkeys-lru --save ""
+    ports:
+      - "6379:6379"
+    deploy:
+      resources:
+        limits:
+          cpus: "0.30"
+          memory: "80MB"
+    networks:
+      - rinha-net
+
+networks:
+  rinha-net:
+    driver: bridge
+  # payment-processor:
+  #   external: true
