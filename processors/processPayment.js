@@ -5,14 +5,14 @@ async function processPayment(payment) {
   
   try {
     const result = await tryProcessor('default', { correlationId, amount });
-    if (result) return result;
+    if (result) return { ...result, processor: 'default' };
   } catch (error) {
     console.log(`Default processor failed: ${error.message}`);
   }
   
   try {
     const result = await tryProcessor('fallback', { correlationId, amount });
-    if (result) return result;
+    if (result) return { ...result, processor: 'fallback' };
   } catch (error) {
     console.log(`Fallback processor failed: ${error.message}`);
   }
@@ -42,4 +42,9 @@ async function tryProcessor(processor, payment) {
   return await response.json();
 }
 
-export { processPayment };
+async function updateStats(redis, processor, amount) {
+  await redis.incrbyfloat(`stats:${processor}:amount`, amount);
+  await redis.incr(`stats:${processor}:count`);
+}
+
+export { processPayment, updateStats };

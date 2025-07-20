@@ -1,4 +1,4 @@
-import { processPayment } from './processPayment.js';
+import { processPayment, updateStats } from './processPayment.js';
 
 async function startProcessor(redis) {
   console.log('Payment processor started');
@@ -11,7 +11,9 @@ async function startProcessor(redis) {
         const payment = JSON.parse(paymentData[1]);
         console.log(`Processing payment: ${payment.correlationId}`);
         
-        await processPayment(payment);
+        const result = await processPayment(payment);
+        const processor = result.processor || 'default';
+        await updateStats(redis, processor, payment.amount);
         console.log(`Payment processed: ${payment.correlationId}`);
       }
     } catch (error) {

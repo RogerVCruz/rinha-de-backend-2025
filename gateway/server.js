@@ -38,11 +38,29 @@ fastify.post('/payments', async function (request, response) {
 });
 
 fastify.get('/payments-summary', async function (request, response) {
-  const { fromDate, toDate } = req.query;
+  try {
+    const [defaultAmount, defaultCount, fallbackAmount, fallbackCount] = await Promise.all([
+      fastify.redis.get('stats:default:amount'),
+      fastify.redis.get('stats:default:count'),
+      fastify.redis.get('stats:fallback:amount'),
+      fastify.redis.get('stats:fallback:count')
+    ]);
 
+    const summary = {
+      default: {
+        totalRequests: parseInt(defaultCount || '0'),
+        totalAmount: parseFloat(defaultAmount || '0')
+      },
+      fallback: {
+        totalRequests: parseInt(fallbackCount || '0'),
+        totalAmount: parseFloat(fallbackAmount || '0')
+      }
+    };
 
-  await fastify.redis.lpush('pending_payments_queue', JSON.stringify({correlationId, amount}));
-  response.code(202).send({message: 'added to qeue'});
+    response.code(200).send(summary);
+  } catch (error) {
+    response.code(500).send({ error: 'Internal server error' });
+  }
 });
 
 fastify.post('/purge-payments', async function (request, response) {
