@@ -3,29 +3,29 @@ import fastifyRedis from '@fastify/redis'
 import { startProcessor } from '../processors/processor.js'
 
 const fastify = Fastify({
-  logger: true
+  logger: false
 })
 
 fastify.register(fastifyRedis, { url: process.env.REDIS_URL || 'redis://localhost:6379'})
 
 
 
-fastify.addContentTypeParser(
-  'application/json',
-  { parseAs: 'buffer' },
-  (req, body, done) => {
-    if (body.length === 0) {
-      done(null, {});
-    } else {
-      try {
-        done(null, JSON.parse(body.toString()));
-      } catch (err) {
-        err.statusCode = 400;
-        done(err);
-      }
-    }
-  }
-);
+// fastify.addContentTypeParser(
+//   'application/json',
+//   { parseAs: 'buffer' },
+//   (req, body, done) => {
+//     if (body.length === 0) {
+//       done(null, {});
+//     } else {
+//       try {
+//         done(null, JSON.parse(body.toString()));
+//       } catch (err) {
+//         err.statusCode = 400;
+//         done(err);
+//       }
+//     }
+//   }
+// );
 
 fastify.post('/payments', async function (request, response) {
   const { correlationId, amount } = request.body;
@@ -34,17 +34,19 @@ fastify.post('/payments', async function (request, response) {
   }
 
   await fastify.redis.lpush('pending_payments_queue', JSON.stringify({correlationId, amount}));
-  response.code(202).send({message: 'added to qeue'});
+  response.code(202).send({message: 'added to queue'});
 });
 
 fastify.get('/payments-summary', async function (request, response) {
   try {
-    const [defaultAmount, defaultCount, fallbackAmount, fallbackCount] = await Promise.all([
-      fastify.redis.get('stats:default:amount'),
-      fastify.redis.get('stats:default:count'),
-      fastify.redis.get('stats:fallback:amount'),
-      fastify.redis.get('stats:fallback:count')
-    ]);
+    const pipeline = fastify.redis.pipeline();
+    pipeline.get('stats:default:amount');
+    pipeline.get('stats:default:count');
+    pipeline.get('stats:fallback:amount');
+    pipeline.get('stats:fallback:count');
+    
+    const results = await pipeline.exec();
+    const [defaultAmount, defaultCount, fallbackAmount, fallbackCount] = results.map(r => r[1]);
 
     const summary = {
       default: {
