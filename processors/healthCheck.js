@@ -1,36 +1,44 @@
-const lastCall = {
-  default: 0,
-  fallback: 0
-};
+import process from 'process';
 
 const cache = {
-  default: null,
-  fallback: null
+  default: { failing: false, minResponseTime: 0 },
+  fallback: { failing: false, minResponseTime: 0 }
 };
 
-async function checkHealth(processor) {
-  const now = Date.now();
-  
-  if (now - lastCall[processor] < 5000 && cache[processor]) {
-    return cache[processor];
-  }
-
+async function performHealthCheck(processor) {
   try {
-    const url = `http://localhost:${processor === 'default' ? '8001' : '8002'}/payments/service-health`;
+    const baseUrl = processor === 'default' 
+      ? (process?.env?.DEFAULT_PROCESSOR_URL || 'http://localhost:8001')
+      : (process?.env?.FALLBACK_PROCESSOR_URL || 'http://localhost:8002');
+    const url = `${baseUrl}/payments/service-health`;
     const response = await fetch(url);
     
     if (response.status === 429) {
-      return cache[processor] || { failing: true, minResponseTime: 999 };
+      console.error("429 TOO MANY REQUESTS")
+      cache[processor] = { failing: true, minResponseTime: 999 };
+      return;
     }
 
     const health = await response.json();
-    lastCall[processor] = now;
     cache[processor] = health;
     
-    return health;
   } catch (error) {
-    return { failing: true, minResponseTime: 999 };
+    console.error(`Health check for ${processor} failed:`, error.message);
+    cache[processor] = { failing: true, minResponseTime: 999 };
   }
 }
 
-export { checkHealth };
+function isProcessorHealthy(processor) {
+  return !cache[processor].failing;
+}
+
+function startHealthChecking() {
+  setInterval(async () => {
+    await Promise.all([
+      performHealthCheck('default'),
+      performHealthCheck('fallback')
+    ]);
+  }, 5000);
+}
+
+export { isProcessorHealthy, startHealthChecking };

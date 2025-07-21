@@ -1,4 +1,6 @@
-import { checkHealth } from './healthCheck.js';
+import { isProcessorHealthy } from './healthCheck.js';
+import process from 'process';
+var failedRequests = 0;
 
 async function processPayment(payment) {
   const { correlationId, amount } = payment;
@@ -7,27 +9,33 @@ async function processPayment(payment) {
     const result = await tryProcessor('default', { correlationId, amount });
     if (result) return { ...result, processor: 'default' };
   } catch (error) {
-    console.log(`Default processor failed: ${error.message}`);
+    // console.log(`Default processor failed: ${error.message}`);
   }
   
   try {
     const result = await tryProcessor('fallback', { correlationId, amount });
     if (result) return { ...result, processor: 'fallback' };
   } catch (error) {
-    console.log(`Fallback processor failed: ${error.message}`);
+    // console.log(`Fallback processor failed: ${error.message}`);
   }
-  
+  failedRequests ++;
+  console.log("Total failed requests: ", failedRequests)
   throw new Error('Both processors failed');
 }
 
 async function tryProcessor(processor, payment) {
-  const health = await checkHealth(processor);
+  const health = isProcessorHealthy(processor);
   
-  if (health.failing) {
+  if (!health) {
     throw new Error(`${processor} processor is unhealthy`);
   }
   
-  const url = `http://localhost:${processor === 'default' ? '8001' : '8002'}/payments`;
+  const baseUrl = processor === 'default' 
+    ? (process?.env?.DEFAULT_PROCESSOR_URL || 'http://localhost:8001')
+    : (process?.env?.FALLBACK_PROCESSOR_URL || 'http://localhost:8002');
+
+  const url = `${baseUrl}/payments`;
+  // console.log(`Trying ${processor} processor at ${url}`);
   const response = await fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },

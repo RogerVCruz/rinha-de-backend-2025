@@ -1,24 +1,44 @@
 import { processPayment, updateStats } from './processPayment.js';
 
+const MAX_CONCURRENT_TASKS = 20;
+const activeTasks = new Set();
+
+async function handlePayment(redis, payment) {
+  try {
+    const result = await processPayment(payment);
+    const processor = result.processor || 'default';
+    await updateStats(redis, processor, payment.amount);
+  } catch (error) {
+    console.error(`Error processing payment ${payment.id}: ${error.message}`);
+    // await redis.lpush('failed_payments_queue', JSON.stringify(payment));
+  }
+}
+
 async function startProcessor(redis) {
-  console.log('Payment processor started');
-  
+  console.log(`Payment processor started (Concurrency: ${MAX_CONCURRENT_TASKS})`);
+
   while (true) {
     try {
-      const paymentData = await redis.brpop('pending_payments_queue', 1);
-      
+      if (activeTasks.size >= MAX_CONCURRENT_TASKS) {
+        await Promise.race(activeTasks);
+      }
+
+      const paymentData = await redis.brpop('pending_payments_queue', 10);
+
       if (paymentData) {
         const payment = JSON.parse(paymentData[1]);
-        // console.log(`Processing payment: ${payment.correlationId}`);
         
-        const result = await processPayment(payment);
-        const processor = result.processor || 'default';
-        await updateStats(redis, processor, payment.amount);
-        // console.log(`Payment processed: ${payment.correlationId}`);
+        const task = handlePayment(redis, payment);
+        
+        activeTasks.add(task);
+        
+        task.finally(() => {
+          activeTasks.delete(task);
+        });
       }
     } catch (error) {
-      console.error(`Processor error: ${error.message}`);
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      console.error(`Processor loop error: ${error.message}`);
+      await new Promise(resolve => setTimeout(resolve, 5000));
     }
   }
 }
