@@ -9,24 +9,6 @@ const fastify = Fastify({
 fastify.register(fastifyRedis, { url: process.env.REDIS_URL || 'redis://localhost:6379'})
 
 
-
-// fastify.addContentTypeParser(
-//   'application/json',
-//   { parseAs: 'buffer' },
-//   (req, body, done) => {
-//     if (body.length === 0) {
-//       done(null, {});
-//     } else {
-//       try {
-//         done(null, JSON.parse(body.toString()));
-//       } catch (err) {
-//         err.statusCode = 400;
-//         done(err);
-//       }
-//     }
-//   }
-// );
-
 fastify.post('/payments', async function (request, response) {
   const { correlationId, amount } = request.body;
   if (!correlationId || !amount) {
@@ -66,7 +48,8 @@ fastify.get('/payments-summary', async function (request, response) {
 });
 
 fastify.post('/purge-payments', async function (request, response) {
-  await fastify.redis.del('pending_payments_queue');
+  await fastify.redis.flushdb();
+  
   response.code(200).send({message: 'payments purged'});
 });
 

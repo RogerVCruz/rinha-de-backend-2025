@@ -9,12 +9,12 @@ async function startProcessor(redis) {
       
       if (paymentData) {
         const payment = JSON.parse(paymentData[1]);
-        console.log(`Processing payment: ${payment.correlationId}`);
+        // console.log(`Processing payment: ${payment.correlationId}`);
         
         const result = await processPayment(payment);
         const processor = result.processor || 'default';
         await updateStats(redis, processor, payment.amount);
-        console.log(`Payment processed: ${payment.correlationId}`);
+        // console.log(`Payment processed: ${payment.correlationId}`);
       }
     } catch (error) {
       console.error(`Processor error: ${error.message}`);
