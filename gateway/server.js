@@ -19,14 +19,14 @@ fastify.post('/payments', async function (request, response) {
 
 fastify.get('/payments-summary', async function (request, response) {
   try {
-    const pipeline = fastify.redis.pipeline();
-    pipeline.get('stats:default:amount');
-    pipeline.get('stats:default:count');
-    pipeline.get('stats:fallback:amount');
-    pipeline.get('stats:fallback:count');
-
-    const results = await pipeline.exec();
-    const [defaultAmount, defaultCount, fallbackAmount, fallbackCount] = results.map(r => r[1]);
+    const results = await fastify.redis.mget(
+      'stats:default:amount',
+      'stats:default:count',
+      'stats:fallback:amount',
+      'stats:fallback:count'
+    );
+    
+    const [defaultAmount, defaultCount, fallbackAmount, fallbackCount] = results;
 
     const summary = {
       default: {

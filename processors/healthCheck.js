@@ -1,4 +1,10 @@
 import process from 'process';
+import { Agent } from 'undici';
+
+const keepAliveAgent = new Agent({
+  keepAliveTimeout: 10 * 1000,
+  keepAliveMaxTimeout: 60 * 1000
+});
 
 const cache = {
   default: { failing: false, minResponseTime: 0 },
@@ -11,7 +17,8 @@ async function performHealthCheck(processor) {
       ? (process?.env?.DEFAULT_PROCESSOR_URL || 'http://localhost:8001')
       : (process?.env?.FALLBACK_PROCESSOR_URL || 'http://localhost:8002');
     const url = `${baseUrl}/payments/service-health`;
-    const response = await fetch(url);
+    
+    const response = await fetch(url, { dispatcher: keepAliveAgent });
     
     if (response.status === 429) {
       console.error("429 TOO MANY REQUESTS")

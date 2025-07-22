@@ -13,6 +13,5 @@ redis.on('connect', () => {
 });
 
 redis.on('error', (err) => {
-  console.error('Worker could not connect to Redis:', err);
   process.exit(1);
 });
