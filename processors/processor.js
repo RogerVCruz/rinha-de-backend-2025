@@ -1,6 +1,6 @@
 import { processPayment, updateStats } from './processPayment.js';
 
-const MAX_CONCURRENT_TASKS = 20;
+const MAX_CONCURRENT_TASKS = 40;
 const activeTasks = new Set();
 
 async function handlePayment(redis, payment) {
@@ -9,8 +9,7 @@ async function handlePayment(redis, payment) {
     const processor = result.processor || 'default';
     await updateStats(redis, processor, payment.amount);
   } catch (error) {
-    console.error(`Error processing payment ${payment.id}: ${error.message}`);
-    // await redis.lpush('failed_payments_queue', JSON.stringify(payment));
+    // console.error(`Error processing payment ${payment.id}: ${error.message}`);
   }
 }
 
@@ -37,7 +36,7 @@ async function startProcessor(redis) {
         });
       }
     } catch (error) {
-      console.error(`Processor loop error: ${error.message}`);
+      // console.error(`Processor loop error: ${error.message}`);
       await new Promise(resolve => setTimeout(resolve, 5000));
     }
   }

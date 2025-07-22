@@ -13,7 +13,7 @@ fastify.post('/payments', async function (request, response) {
     return response.code(400).send({ error: 'Invalid payload' });
   }
 
-  await fastify.redis.lpush('pending_payments_queue', JSON.stringify({ correlationId, amount }));
+  fastify.redis.lpush('pending_payments_queue', JSON.stringify({ correlationId, amount }));
   response.code(202).send({ message: 'added to queue' });
 });
 
