@@ -1,5 +1,4 @@
 services:
-  # Load Balancer
   nginx:
     image: nginx:alpine
     container_name: rinha-nginx
@@ -14,7 +13,7 @@ services:
     deploy:
       resources:
         limits:
-          cpus: "0.10"
+          cpus: "0.25"
           memory: "30MB"
     networks:
       - rinha-net
@@ -33,12 +32,11 @@ services:
       resources:
         limits:
           cpus: "0.2"
-          memory: "50MB"
+          memory: "65MB"
     networks:
       - rinha-net
       - payment-processor
 
-  # SERVIÇO 2: API Gateway - Instância 2
   api-2:
     build: .
     container_name: rinha-api-2
@@ -52,12 +50,11 @@ services:
       resources:
         limits:
           cpus: "0.2"
-          memory: "50MB"
+          memory: "65MB"
     networks:
       - rinha-net
       - payment-processor
 
-  # SERVIÇO 3: Processador de Pagamentos
   processor:
     build: .
     container_name: rinha-processor
@@ -72,25 +69,24 @@ services:
     deploy:
       resources:
         limits:
-          cpus: "0.85"
-          memory: "160MB"
+          cpus: "0.7"
+          memory: "150MB"
     networks:
       - rinha-net
       - payment-processor
 
-  # SERVIÇO 4: Redis
   redis:
-    image: redis:7-alpine
+    image: redis:8.0.3-alpine
     container_name: rinha-redis
     hostname: rinha-redis
-    command: redis-server --maxmemory 75mb --maxmemory-policy allkeys-lru --save ""
+    command: redis-server --maxmemory 50mb --maxmemory-policy allkeys-lru --save ""
     ports:
       - "6379:6379"
     deploy:
       resources:
         limits:
           cpus: "0.15"
-          memory: "120MB"
+          memory: "50MB"
     networks:
       - rinha-net
 

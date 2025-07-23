@@ -5,7 +5,13 @@ const fastify = Fastify({
   logger: false
 });
 
-fastify.register(fastifyRedis, { url: process.env.REDIS_URL || 'redis://localhost:6379' });
+fastify.register(fastifyRedis, { 
+  url: process.env.REDIS_URL || 'redis://localhost:6379',
+  maxRetriesPerRequest: 1,
+  retryDelayOnFailover: 100,
+  connectTimeout: 2000,
+  commandTimeout: 1000
+});
 
 fastify.post('/payments', async function (request, response) {
   const { correlationId, amount } = request.body;

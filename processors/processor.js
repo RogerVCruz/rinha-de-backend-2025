@@ -5,7 +5,7 @@ const activeTasks = new Set();
 
 async function handlePayment(redis, payment) {
   try {
-    const result = await processPayment(payment);
+    const result = await processPayment(payment, redis);
     const processor = result.processor || 'default';
     await updateStats(redis, processor, payment.amount);
   } catch (error) {

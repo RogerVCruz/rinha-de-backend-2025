@@ -3,8 +3,6 @@ import Redis from 'ioredis';
 import { startProcessor } from './processors/processor.js';
 
 console.log('Worker process starting...');
-
-
 const redis = new Redis(process.env.REDIS_URL || 'redis://localhost:6379');
 
 redis.on('connect', () => {
@@ -13,5 +11,6 @@ redis.on('connect', () => {
 });
 
 redis.on('error', (err) => {
+  // console.error(err);
   process.exit(1);
 });

@@ -2,14 +2,12 @@ import { isProcessorHealthy } from './healthCheck.js';
 import process from 'process';
 import { Agent } from 'undici';
 
-var failedRequests = 0;
-
 const keepAliveAgent = new Agent({
   keepAliveTimeout: 10 * 1000, 
   keepAliveMaxTimeout: 60 * 1000
 });
 
-async function processPayment(payment) {
+async function processPayment(payment, redis) {
   const { correlationId, amount } = payment;
   
   let defaultResult = await tryProcessorSafe('default', { correlationId, amount });
@@ -18,23 +16,11 @@ async function processPayment(payment) {
   let fallbackResult = await tryProcessorSafe('fallback', { correlationId, amount });
   if (fallbackResult.success) return { ...fallbackResult.data, processor: 'fallback' };
   
-  if (!defaultResult.success && !fallbackResult.success) {
-    await new Promise(resolve => setTimeout(resolve, defaultResult.unhealthy && fallbackResult.unhealthy ? 5000 : 1000));
-    
-    if (!defaultResult.unhealthy) {
-      const retryDefault = await tryProcessorSafe('default', { correlationId, amount });
-      if (retryDefault.success) return { ...retryDefault.data, processor: 'default' };
-    }
-    
-    if (!fallbackResult.unhealthy) {
-      const retryFallback = await tryProcessorSafe('fallback', { correlationId, amount });
-      if (retryFallback.success) return { ...retryFallback.data, processor: 'fallback' };
-    }
+  if (!defaultResult.success && !fallbackResult.success) {    
+  redis.lpush('pending_payments_queue', JSON.stringify({ correlationId, amount }));
   }
   
-  failedRequests++;
-  console.log("Total failed requests: ", failedRequests);
-  throw new Error('Both processors failed after retry');
+
 }
 
 async function tryProcessorSafe(processor, payment) {
